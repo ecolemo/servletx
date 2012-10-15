@@ -24,16 +24,23 @@ public abstract class DispatchServlet extends HttpServlet {
 	
 	@Override
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+		req.setCharacterEncoding("UTF-8");
 		dispatch(req, resp);
 	}
 
 	protected void dispatch(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		try {
+			req.setAttribute("contextPath", req.getContextPath());
+			req.setAttribute("servletPath", req.getServletPath());
 			if (req.getPathInfo() == null) {
+				req.setAttribute("methodPath", "index");
 				index(req, resp);
 				return;
 			}
-			Method method = getClass().getDeclaredMethod(req.getPathInfo().substring(1), HttpServletRequest.class, HttpServletResponse.class);
+			String[] pathInfo = req.getPathInfo().split("/");
+			req.setAttribute("methodPath", pathInfo[1]);
+			if (pathInfo.length > 2) req.setAttribute("resourceID", pathInfo[2]);
+			Method method = getClass().getMethod(pathInfo[1], HttpServletRequest.class, HttpServletResponse.class);
 			method.setAccessible(true);
 			method.invoke(this, req, resp);
 		} catch (SecurityException e) {
@@ -48,8 +55,12 @@ public abstract class DispatchServlet extends HttpServlet {
 			e.printStackTrace();
 		}
 	}
+	
+	protected String getResourceID(HttpServletRequest req) {
+		return (String) req.getAttribute("resourceID");
+	}
 
-	protected abstract void index(HttpServletRequest req, HttpServletResponse resp)  throws ServletException, IOException;
+	public abstract void index(HttpServletRequest req, HttpServletResponse resp)  throws ServletException, IOException;
 	
 	public DataMap getContentParameterMap(HttpServletRequest request) {
 		DataMap params = new DataMap();
@@ -72,6 +83,10 @@ public abstract class DispatchServlet extends HttpServlet {
 		return params;
 	}
 
+	protected void render(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+		request.getRequestDispatcher(getDefaultViewPath(request)).forward(request, response);
+	}
+	
 	protected void render(HttpServletRequest request, HttpServletResponse response, String forward) throws ServletException, IOException {
 		request.getRequestDispatcher(forward).forward(request, response);
 	}
@@ -81,5 +96,10 @@ public abstract class DispatchServlet extends HttpServlet {
 		writer.println(text);
 		writer.close();
 	}
+	
+	protected String getDefaultViewPath(HttpServletRequest request) {
+		return "/view" + request.getServletPath() + "/" + request.getAttribute("methodPath") + ".jsp";
+	}
+	
 	
 }
