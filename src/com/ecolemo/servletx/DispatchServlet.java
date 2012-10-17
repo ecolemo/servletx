@@ -7,6 +7,7 @@ import java.lang.reflect.Method;
 import java.util.Map;
 
 import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -32,17 +33,24 @@ public abstract class DispatchServlet extends HttpServlet {
 		try {
 			req.setAttribute("contextPath", req.getContextPath());
 			req.setAttribute("servletPath", req.getServletPath());
+			
+			beforeFilter(req, resp);
+
 			if (req.getPathInfo() == null) {
 				req.setAttribute("methodPath", "index");
 				index(req, resp);
 				return;
 			}
+			
 			String[] pathInfo = req.getPathInfo().split("/");
 			req.setAttribute("methodPath", pathInfo[1]);
 			if (pathInfo.length > 2) req.setAttribute("resourceID", pathInfo[2]);
+			
 			Method method = getClass().getMethod(pathInfo[1], HttpServletRequest.class, HttpServletResponse.class);
 			method.setAccessible(true);
 			method.invoke(this, req, resp);
+			
+			afterFilter(req, resp);
 		} catch (SecurityException e) {
 			e.printStackTrace();
 		} catch (NoSuchMethodException e) {
@@ -56,6 +64,12 @@ public abstract class DispatchServlet extends HttpServlet {
 		}
 	}
 	
+	protected void afterFilter(HttpServletRequest req, HttpServletResponse resp) {
+	}
+
+	protected void beforeFilter(HttpServletRequest req, HttpServletResponse resp) {
+	}
+
 	protected String getResourceID(HttpServletRequest req) {
 		return (String) req.getAttribute("resourceID");
 	}
@@ -101,5 +115,34 @@ public abstract class DispatchServlet extends HttpServlet {
 		return "/view" + request.getServletPath() + "/" + request.getAttribute("methodPath") + ".jsp";
 	}
 	
+    public String getCookie(HttpServletRequest request, String name) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null) return null;
+        
+        for (Cookie cookie : cookies) {
+            if (cookie.getName().equals(name)) {
+                return cookie.getValue();
+            }
+        }
+        return null;
+    }
+
+    public void setCookie(HttpServletResponse response, String name, String value) {
+        Cookie cookie = new Cookie(name, value);
+        cookie.setMaxAge(-1);
+        cookie.setPath("/");
+        response.addCookie(cookie);
+    }
+
+    public void clearCookie(HttpServletRequest request, HttpServletResponse response, String name) {
+        Cookie[] cookies = request.getCookies();
+        for (Cookie cookie : cookies) {
+            if (cookie.getName().equals(name)) {
+                cookie.setPath("/");
+                cookie.setMaxAge(0);
+                response.addCookie(cookie);
+            }
+        }
+    }
 	
 }
