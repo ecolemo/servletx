@@ -12,6 +12,10 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.codehaus.jackson.JsonGenerationException;
+import org.codehaus.jackson.map.JsonMappingException;
+import org.codehaus.jackson.map.ObjectMapper;
+
 import com.ecolemo.jangorm.util.DataMap;
 
 public abstract class DispatchServlet extends HttpServlet {
@@ -110,7 +114,23 @@ public abstract class DispatchServlet extends HttpServlet {
 		writer.println(text);
 		writer.close();
 	}
-	
+
+	protected void renderJSON(HttpServletResponse response, Map object) {
+		try {
+			response.setContentType("text/javascript;charset=utf-8");
+			PrintWriter writer = response.getWriter();
+			ObjectMapper om = new ObjectMapper();
+			om.writeValue(writer, object);
+			writer.close();
+		} catch (JsonGenerationException e) {
+			throw new RuntimeException(e);
+		} catch (JsonMappingException e) {
+			throw new RuntimeException(e);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		
+	}
 	protected String getDefaultViewPath(HttpServletRequest request) {
 		return "/view" + request.getServletPath() + "/" + request.getAttribute("methodPath") + ".jsp";
 	}
